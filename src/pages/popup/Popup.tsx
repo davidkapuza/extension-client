@@ -1,6 +1,6 @@
 import "@src/styles/index.css";
-import { Copy, Mic } from "lucide-solid";
-import { For, createEffect, createSignal } from "solid-js";
+import { Copy, Mic, MicOff } from "lucide-solid";
+import { For, Show, createEffect, createSignal } from "solid-js";
 
 const SECOND = 1000;
 const MINUTE = SECOND * 60;
@@ -23,7 +23,7 @@ function generateRandomSentence() {
   return sentence.join(" ");
 }
 
-let initialMessages = [];
+const initialMessages = [];
 
 function getRandomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -44,6 +44,8 @@ function toDecimal(ms: number): string {
 const Popup = () => {
   const [messages, setMessages] = createSignal<string[]>(initialMessages);
   const [isRecording, setIsRecording] = createSignal<boolean>(false);
+  const [isMutted, setIsMutted] = createSignal<boolean>(false);
+  const [isCopied, setIsCopied] = createSignal<boolean>(false);
   const [time, setTime] = createSignal<Timer>(initialTimer);
 
   let timeout,
@@ -83,16 +85,31 @@ const Popup = () => {
     setIsRecording(!isRecording());
   };
 
+  const toggleMutted = () => {
+    setIsMutted(!isMutted());
+  };
+  
+  createEffect(() => {
+    if (isCopied()) {
+      setTimeout(() => setIsCopied(false), 500)
+    }
+  })
+
+  const handleMessagesCopy = () => {
+    setIsCopied(true)
+    navigator.clipboard.writeText(messages().join(" "))
+  };
+
   return (
     <div class="flex h-full relative flex-col items-center p-6">
       <div class="fixed top-0 left-0 right-0 flex flex-col items-center bg-base-to-transparent p-6 z-10">
         <header class="w-full">
-          <span class="text-2xl leading-none">LOGO</span>
+          <span class="text-2xl leading-none">🎙️</span>
         </header>
         <div class="w-full text-start pt-3 font-light">
           <span class="countdown">
-            <span style={`--value:${time().m};`}></span>:
-            <span style={`--value:${time().s};`}></span>
+            <span style={{ "--value": time().m }} />:
+            <span style={{ "--value": time().s }} />
           </span>
         </div>
         <div class="outline outline-1 outline-secondary outline-offset-12 rounded-full w-24 min-h-24 flex ">
@@ -113,24 +130,23 @@ const Popup = () => {
             )}
           </button>
         </div>
-        <div class="pt-6 text-neutral">
-          {isRecording() ? "click to stop" : "click to start"}
-        </div>
-        <div
-          classList={{
-            "py-5 flex justify-between items-center w-full border-secondary transition-opacity ease-in-out duration-500":
-              true,
-            "opacity-100": isRecording() || messages().length > 0,
-            "opacity-0": !isRecording() && messages().length === 0,
-          }}
-        >
-          <h1>Transcription:</h1>
-          <div class="tooltip" data-tip="Copy">
-            <button class="btn btn-circle btn-sm">
-              <Copy class="h-3" />
+        <div class="pt-8 text-neutral">
+          <div class="tooltip" data-tip={isCopied() ? "Copied 🎉" : "Copy"}>
+            <button disabled={messages().length === 0 || isCopied()} onClick={handleMessagesCopy} class="btn btn-outline border-secondary btn-circle btn-sm mr-2">
+              <Copy class="h-3.5" />
+            </button>
+          </div>
+          <div class="tooltip" data-tip={isMutted() ? "Unmute" : "Mute"}>
+            <button disabled={!isRecording()} onClick={toggleMutted} classList={{"btn btn-outline border-secondary btn-circle btn-sm": true, "btn-active": isMutted()}}>
+              <MicOff class="h-3.5" />
             </button>
           </div>
         </div>
+        <Show
+          when={isRecording() || messages().length > 0}
+        >
+          <h1 class="py-5 w-full text-start">Transcription:</h1>
+        </Show>
       </div>
 
       <div class="flex flex-col w-full mt-[270px] pb-10">
